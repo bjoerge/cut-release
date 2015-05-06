@@ -2,7 +2,7 @@
 
 A command line tool that helps you make faster npm releases.
 
-![](https://github.com/github/bjoerge/cut-release/master/demo.gif)
+![](https://github.com/bjoerge/cut-release/blob/master/demo.gif)
 
 # What it does:
 
