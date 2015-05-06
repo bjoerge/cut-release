@@ -12,20 +12,19 @@ A command line tool that helps you make faster npm releases.
 
 # Install
 
-  npm i -g cut-release
+    npm install -g cut-release
 
 # Usage 
 
 ```
-Usage: release [<newversion> | patch | minor | major | prepatch | preminor | premajor | prerelease]
+Usage: cut-release [<newversion> | patch | minor | major | prepatch | preminor | premajor | prerelease]
 
 
   Options:
 
-    --yes, -y       Never confirm, just release right away
+    --yes, -y       Don't confirm, just release right away. The new version must be supplied.
 
-    --message, -m   If supplied,, npm will use it as a commit message when
+    --message, -m   If supplied, npm will use it as a commit message when
                     creating a version commit. If the message contains %s then
                     that will be replaced with the resulting version number
- 
 ```

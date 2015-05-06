@@ -4,7 +4,7 @@
   "description": "A tool that helps you make faster npm releases",
   "main": "index.js",
   "bin": {
-    "release": "./bin/release.js"
+    "cut-release": "./bin/cut-release.js"
   },
   "scripts": {
     "test": "standard"
