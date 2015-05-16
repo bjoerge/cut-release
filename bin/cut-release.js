@@ -17,11 +17,15 @@ var argv = parseArgs(process.argv.slice(2), {
     h: 'help'
   },
   unknown: function (opt) {
-    if (VALID_VERSIONS.indexOf(opt) > -1) {
+    if (semver.valid(opt) || VALID_VERSIONS.indexOf(opt) > -1) {
       return
     }
     console.log()
-    console.log('Error: Invalid option: %s', opt)
+    if (opt.substring(0, 1) === '-') {
+      console.log('Error: Invalid option "%s"', opt)
+    } else {
+      console.log('Error: Invalid version "%s"', opt)
+    }
     console.log()
     console.log(help())
     process.exit(1)
