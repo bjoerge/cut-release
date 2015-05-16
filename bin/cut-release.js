@@ -9,7 +9,7 @@ var path = require('path')
 var exec = require('child_process').exec
 var async = require('async')
 
-var VALID_VERSIONS = ['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease']
+var SEMVER_INCREMENTS = ['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease']
 
 var argv = parseArgs(process.argv.slice(2), {
   alias: {
@@ -17,7 +17,7 @@ var argv = parseArgs(process.argv.slice(2), {
     h: 'help'
   },
   unknown: function (opt) {
-    if (semver.valid(opt) || VALID_VERSIONS.indexOf(opt) > -1) {
+    if (semver.valid(opt) || SEMVER_INCREMENTS.indexOf(opt) > -1) {
       return
     }
     console.log()
@@ -53,7 +53,7 @@ var prompts = {
     type: 'list',
     name: 'version',
     message: 'What version would you like to release',
-    choices: VALID_VERSIONS.concat({
+    choices: SEMVER_INCREMENTS.concat({
       name: 'other (specify)',
       value: '_other'
     })
@@ -79,7 +79,8 @@ var version = argv._[0]
 
 function gotVersion (callback) {
   if (version) {
-    return process.nextTick(callback.bind(null, version))
+    var newVer = SEMVER_INCREMENTS.indexOf(version) > -1 ? semver.inc(pkg.version, version) : version;
+    return process.nextTick(callback.bind(null, newVer))
   }
   inquirer.prompt(prompts.version, function (answers) {
     if (answers.version === '_other') {
@@ -99,11 +100,10 @@ function confirm (version, callback) {
   if (argv.yes) {
     return process.nextTick(callback.bind(null, true))
   }
-  var newVer = semver.inc(pkg.version, version)
   var prompt = {
     type: 'confirm',
     name: 'confirm',
-    message: 'This will tag and release a new version from ' + pkg.version + ' to ' + newVer + '. Are you sure?'
+    message: 'This will tag and release a new version from ' + pkg.version + ' to ' + version + '. Are you sure?'
   }
 
   inquirer.prompt(prompt, function (answers) {
