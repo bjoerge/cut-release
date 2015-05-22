@@ -79,20 +79,23 @@ var version = argv._[0]
 
 function gotVersion (callback) {
   if (version) {
-    var newVer = SEMVER_INCREMENTS.indexOf(version) > -1 ? semver.inc(pkg.version, version) : version;
-    return process.nextTick(callback.bind(null, newVer))
+    return process.nextTick(callback.bind(null, maybeInc(version)))
   }
   inquirer.prompt(prompts.version, function (answers) {
     if (answers.version === '_other') {
       return specifyVersion(callback)
     }
-    callback(answers.version)
+    callback(maybeInc(answers.version))
   })
+}
+
+function maybeInc (version) {
+  return SEMVER_INCREMENTS.indexOf(version) > -1 ? semver.inc(pkg.version, version) : version
 }
 
 function specifyVersion (callback) {
   inquirer.prompt(prompts.specify, function (answers) {
-    callback(answers.specify)
+    callback(maybeInc(answers.specify))
   })
 }
 
@@ -103,7 +106,7 @@ function confirm (version, callback) {
   var prompt = {
     type: 'confirm',
     name: 'confirm',
-    message: 'This will tag and release a new version from ' + pkg.version + ' to ' + version + '. Are you sure?'
+    message: 'Will bump from ' + pkg.version + ' to ' + version + '. Continue?'
   }
 
   inquirer.prompt(prompt, function (answers) {
