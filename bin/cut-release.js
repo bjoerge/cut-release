@@ -14,6 +14,12 @@ var request = require('request')
 
 var SEMVER_INCREMENTS = ['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease']
 
+Object.keys (inquirer.prompt.prompts).forEach (function (prompt) {
+  inquirer.prompt.prompts[prompt].prototype.prefix = function (str) {
+    return str;
+  };
+});
+
 var argv = parseArgs(process.argv.slice(2), {
   alias: {
     y: 'yes',
@@ -203,7 +209,7 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
     confirm(version, function (yes) {
       isGitRepo(function (isGitRepo) {
         var commands = [
-          'npm version --no-git-tag-version ' + version,
+          'npm version ' + version,
           isGitRepo && 'git push origin',
           isGitRepo && 'git push origin --tags',
           'npm publish'
