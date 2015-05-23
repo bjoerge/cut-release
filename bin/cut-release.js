@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+'use strict'
 
 var inquirer = require('inquirer')
 var chalk = require('chalk')
@@ -7,7 +8,9 @@ var semver = require('semver')
 var fs = require('fs')
 var path = require('path')
 var exec = require('child_process').exec
+var spawn = require('child_process').spawn
 var async = require('async')
+var request = require('request')
 
 var SEMVER_INCREMENTS = ['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease']
 
@@ -20,17 +23,25 @@ var argv = parseArgs(process.argv.slice(2), {
     if (semver.valid(opt) || SEMVER_INCREMENTS.indexOf(opt) > -1) {
       return
     }
-    console.log()
+    log()
     if (opt.substring(0, 1) === '-') {
-      console.log('Error: Invalid option "%s"', opt)
+      log('Error: Invalid option "%s"', opt)
     } else {
-      console.log('Error: Invalid version "%s"', opt)
+      log('Error: Invalid version "%s"', opt)
     }
-    console.log()
-    console.log(help())
+    log()
+    log(help())
     process.exit(1)
   }
 })
+
+var version = argv._[0]
+
+function log (args) {
+  console.log.apply(console, arguments)
+}
+
+var selfPkg = require('../package.json')
 
 function help () {
   return fs.readFileSync(__dirname + '/usage.txt', 'utf-8')
@@ -41,9 +52,9 @@ try {
   pkg = require(path.join(process.cwd(), 'package.json'))
 } catch (e) {
   if (e.code === 'MODULE_NOT_FOUND') {
-    console.log('No package.json exists in current working directory')
+    log('Error: No package.json exists in current working directory')
   } else {
-    console.log('Error reading package.json from current working directory: %s', e.message)
+    log('Error: Unable to read package.json from current working directory: %s', e.message)
   }
   process.exit(1)
 }
@@ -52,7 +63,7 @@ var prompts = {
   version: {
     type: 'list',
     name: 'version',
-    message: 'What version would you like to release',
+    message: 'Semver increment',
     choices: SEMVER_INCREMENTS.concat({
       name: 'other (specify)',
       value: '_other'
@@ -70,12 +81,6 @@ var prompts = {
     message: 'Specify version'
   }
 }
-
-var ui = new inquirer.ui.BottomBar()
-
-ui.log.write('Releasing a new version of `' + pkg.name + '` (current version: ' + pkg.version + ')')
-
-var version = argv._[0]
 
 function gotVersion (callback) {
   if (version) {
@@ -120,59 +125,119 @@ function isGitRepo (callback) {
   })
 }
 
-function maybePush (callback) {
-  isGitRepo(function (yes) {
-    if (!yes) {
-      return callback()
-    }
-    return async.parallel([
-      execCmd.bind(null, 'git push origin'),
-      execCmd.bind(null, 'git push origin --tags')
-    ], callback)
-  })
-}
-
-function bump (version, callback) {
-  execCmd('npm version ' + version, callback)
-}
-
-function publish (callback) {
-  execCmd('npm publish', callback)
-}
-
 function execCmd (cmd, callback) {
   exec(cmd, function (err, stdout, stderr) {
     if (err) {
-      err = new Error('`' + cmd + '` failed:\n' + err.message)
+      err = new Error('The command `' + cmd + '` failed:\n' + err.message)
       err.stderr = stderr
       err.stdout = stdout
       return callback(err)
     }
-    ui.log.write(stdout)
+    if (stdout.trim().length > 0) {
+      log(stdout)
+    }
     callback(null, stdout)
   })
 }
 
-function handleError (error) {
-  ui.log.write(chalk.red(error.message))
-  process.exit(1)
-}
-
-gotVersion(function (version) {
-  confirm(version, function (yes) {
-    if (!yes) {
-      return process.exit(0)
+function maybeSelfUpdate (callback) {
+  request('https://registry.npmjs.org/' + selfPkg.name, {timeout: 2000}, function (error, response, body) {
+    if (error) {
+      return fail('unable to check for latest version: ' + error.message)
+    }
+    if (response.statusCode !== 200) {
+      return fail('http error ' + response.statusCode + ' while checking for latest repository version: ' + body)
+    }
+    var parsed
+    try {
+      parsed = JSON.parse(body)
+    } catch(e) {
+      return fail('unable to check for latest version: ' + e.message + ' while parsing response body from npm')
+    }
+    if (parsed.skipSelfUpdate) {
+      return fail('package.json says skip self update')
     }
 
-    async.series([
-      bump.bind(null, version),
-      maybePush,
-      publish
-    ], function (err) {
-      if (err) {
-        return handleError(err)
-      }
-      console.log(chalk.green('Done'))
+    var latestVersion = parsed['dist-tags'].latest
+
+    if (!semver.lt(selfPkg.version, latestVersion)) {
+      return callback(null, false)
+    }
+
+    var prompt = {
+      type: 'confirm',
+      name: 'confirm',
+      message: 'A new version of ' + selfPkg.name + ' (' + latestVersion + ' - you\'ve got ' + selfPkg.version + ') is available. Would you like to update?'
+    }
+
+    inquirer.prompt(prompt, function (answers) {
+      callback(null, answers.confirm)
+    })
+
+    function fail (e) {
+      callback(new Error(e))
+    }
+  })
+}
+
+function selfUpdate () {
+  log(chalk.blue('Running selfupdate. Please hang on...'))
+  var cmd = 'npm i -g cut-release@latest'
+  execCmd(cmd, function () {
+    log(chalk.blue('Self update completed'))
+    spawn('cut-release', process.argv.slice(2), {stdio: 'inherit'})
+  })
+}
+
+maybeSelfUpdate(function (err, shouldSelfUpdate) {
+  if (err) {
+    // log('Selfupdate check failed: ' + err.message)
+    // log('')
+  }
+  if (shouldSelfUpdate) {
+    return selfUpdate()
+  }
+  log('Releasing a new version of `%s` (current version: %s)', pkg.name, pkg.version)
+  log('')
+  gotVersion(function (version) {
+    confirm(version, function (yes) {
+      isGitRepo(function (isGitRepo) {
+        var commands = [
+          'npm version --no-git-tag-version ' + version,
+          isGitRepo && 'git push origin',
+          isGitRepo && 'git push origin --tags',
+          'npm publish'
+        ]
+          .filter(Boolean)
+
+        if (!yes) {
+          return process.exit(0)
+        }
+
+        var remaining = commands.slice()
+        async.eachSeries(commands, function (command, callback) {
+            log('=> ' + command)
+            execCmd(command, function (err, result) {
+              callback(err, result)
+              remaining.shift()
+            })
+          },
+          function (err) {
+            if (err) {
+              return showError(err)
+            }
+            log(chalk.green('Done'))
+          })
+
+        function showError (error) {
+          log('')
+          log(chalk.red(error.message))
+          log('')
+          log(chalk.yellow('You can try again by running these commands manually:'))
+          log(chalk.white(remaining.join('\n')))
+          process.exit(1)
+        }
+      })
     })
   })
 })

@@ -6,7 +6,7 @@ A command line tool that helps you make faster npm releases.
 
 # What it does:
 
-  * runs `npm version` with the version you specify. If run in a git repo, it will also create a version commit and tag, and fail if the repo is not clean (read more about the `npm version` command here: https://docs.npmjs.com/cli/version)
+  * runs `npm version` with the version you specify. If run in a git repo, it will also create a version commit and tag, just like what [`npm version`](https://docs.npmjs.com/cli/version) does.
   * pushes commits and tags to origin
   * runs `npm publish`
 
