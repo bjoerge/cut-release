@@ -69,11 +69,14 @@ var prompts = {
   version: {
     type: 'list',
     name: 'version',
-    message: 'Semver increment',
-    choices: SEMVER_INCREMENTS.concat({
-      name: 'other (specify)',
-      value: '_other'
-    })
+    message: 'Select semver increment or specify new version',
+    choices: SEMVER_INCREMENTS.concat([
+      new inquirer.Separator(),
+      {
+        name: 'Other (specify)',
+        value: '_other'
+      }
+    ])
   },
   specify: {
     type: 'input',
@@ -84,7 +87,7 @@ var prompts = {
       return true
     },
     name: 'specify',
-    message: 'Specify version'
+    message: 'Version'
   }
 }
 
