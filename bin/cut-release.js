@@ -10,7 +10,6 @@ var path = require('path')
 var exec = require('child_process').exec
 var spawn = require('child_process').spawn
 var async = require('async')
-var request = require('request')
 
 var SEMVER_INCREMENTS = ['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease']
 
@@ -150,24 +149,15 @@ function execCmd (cmd, callback) {
 }
 
 function maybeSelfUpdate (callback) {
-  request('https://registry.npmjs.org/' + selfPkg.name, {timeout: 2000}, function (error, response, body) {
+  exec('npm view cut-release@latest version', {timeout: 2000}, function (error, stdout, stderr) {
     if (error) {
-      return fail('unable to check for latest version: ' + error.message)
+      return callback(error)
     }
-    if (response.statusCode !== 200) {
-      return fail('http error ' + response.statusCode + ' while checking for latest repository version: ' + body)
-    }
-    var parsed
-    try {
-      parsed = JSON.parse(body)
-    } catch(e) {
-      return fail('unable to check for latest version: ' + e.message + ' while parsing response body from npm')
-    }
-    if (parsed.skipSelfUpdate) {
-      return fail('package.json says skip self update')
+    if (stderr) {
+      return callback(new Error('unable to check for latest version: ' + stderr.toString()))
     }
 
-    var latestVersion = parsed['dist-tags'].latest
+    var latestVersion = stdout.trim()
 
     if (!semver.lt(selfPkg.version, latestVersion)) {
       return callback(null, false)
@@ -182,10 +172,6 @@ function maybeSelfUpdate (callback) {
     inquirer.prompt(prompt, function (answers) {
       callback(null, answers.confirm)
     })
-
-    function fail (e) {
-      callback(new Error(e))
-    }
   })
 }
 
@@ -200,7 +186,7 @@ function selfUpdate () {
 
 maybeSelfUpdate(function (err, shouldSelfUpdate) {
   if (err) {
-    // log('Selfupdate check failed: ' + err.message)
+    // log('Selfupdate check failed: ' + err.stack)
     // log('')
   }
   if (shouldSelfUpdate) {
