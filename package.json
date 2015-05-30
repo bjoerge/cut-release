@@ -1,6 +1,6 @@
 {
   "name": "cut-release",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A tool that helps you make faster npm releases",
   "main": "index.js",
   "bin": {
