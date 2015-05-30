@@ -13,11 +13,11 @@ var async = require('async')
 
 var SEMVER_INCREMENTS = ['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease']
 
-Object.keys (inquirer.prompt.prompts).forEach (function (prompt) {
+Object.keys(inquirer.prompt.prompts).forEach(function (prompt) {
   inquirer.prompt.prompts[prompt].prototype.prefix = function (str) {
-    return str;
-  };
-});
+    return str
+  }
+})
 
 var argv = parseArgs(process.argv.slice(2), {
   alias: {
