@@ -23,6 +23,7 @@ var argv = parseArgs(process.argv.slice(2), {
   alias: {
     y: 'yes',
     t: 'tag',
+    m: 'message',
     h: 'help'
   },
   unknown: function (opt) {
@@ -199,7 +200,7 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
     confirm(version, function (yes) {
       isGitRepo(function (isGitRepo) {
         var commands = [
-          'npm version ' + version,
+          'npm version ' + version + (argv.message ? ' --message ' + argv.message : ''),
           isGitRepo && 'git push origin',
           isGitRepo && 'git push origin --tags',
           'npm publish' + (argv.tag ? ' --tag ' + argv.tag : '')
