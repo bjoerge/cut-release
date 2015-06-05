@@ -22,6 +22,7 @@ Object.keys(inquirer.prompt.prompts).forEach(function (prompt) {
 var argv = parseArgs(process.argv.slice(2), {
   alias: {
     y: 'yes',
+    t: 'tag',
     h: 'help'
   },
   unknown: function (opt) {
@@ -201,7 +202,7 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
           'npm version ' + version,
           isGitRepo && 'git push origin',
           isGitRepo && 'git push origin --tags',
-          'npm publish'
+          'npm publish' + (argv.tag ? ' --tag ' + argv.tag : '')
         ]
           .filter(Boolean)
 
