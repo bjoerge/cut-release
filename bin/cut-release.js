@@ -226,6 +226,8 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
 
         function showError (error) {
           log('')
+          log(chalk.red(error.stdout))
+          log('')
           log(chalk.red(error.message))
           log('')
           log(chalk.yellow('You can try again by running these commands manually:'))
