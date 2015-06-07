@@ -42,7 +42,8 @@ var argv = parseArgs(process.argv.slice(2), {
   }
 })
 
-var version = argv._[0]
+var version = argv._[0],
+    confirm = argv.yes
 
 function log (args) {
   console.log.apply(console, arguments)
@@ -66,67 +67,66 @@ try {
   process.exit(1)
 }
 
-var prompts = {
-  version: {
+var prompts = [
+  {
     type: 'list',
     name: 'version',
     message: 'Select semver increment or specify new version',
+    when: function(answers) {
+      if (version) {
+        answers.version = maybeInc(version)
+      }
+      return !version
+    },
     choices: SEMVER_INCREMENTS.concat([
       new inquirer.Separator(),
       {
         name: 'Other (specify)',
-        value: '_other'
+        value: null
       }
-    ])
+    ]),
+    filter: function (input) {
+      if (!input) {
+        return null
+      }
+      return maybeInc(input)
+    }
   },
-  specify: {
+  {
     type: 'input',
+    name: 'version',
+    message: 'Version',
+    when: function (answers) {
+      return !answers.version
+    },
+    filter: function (input) {
+      return maybeInc(input)
+    },
     validate: function (input) {
       if (!semver.valid(input)) {
         return 'Please specify a valid semver, e.g. 1.2.3. See http://semver.org/'
       }
       return true
-    },
-    name: 'specify',
-    message: 'Version'
-  }
-}
-
-function gotVersion (callback) {
-  if (version) {
-    return process.nextTick(callback.bind(null, maybeInc(version)))
-  }
-  inquirer.prompt(prompts.version, function (answers) {
-    if (answers.version === '_other') {
-      return specifyVersion(callback)
     }
-    callback(maybeInc(answers.version))
-  })
-}
+  },
+  {
+    type: 'confirm',
+    name: 'confirm',
+    message: function (answers) {
+      return 'Will bump from ' + pkg.version + ' to ' + answers.version + '. Continue?'
+    },
+    when: function (answers) {
+      if (confirm) {
+        answers.confirm = confirm
+      }
+      return !confirm
+    }
+  }
+]
+
 
 function maybeInc (version) {
   return SEMVER_INCREMENTS.indexOf(version) > -1 ? semver.inc(pkg.version, version) : version
-}
-
-function specifyVersion (callback) {
-  inquirer.prompt(prompts.specify, function (answers) {
-    callback(maybeInc(answers.specify))
-  })
-}
-
-function confirm (version, callback) {
-  if (argv.yes) {
-    return process.nextTick(callback.bind(null, true))
-  }
-  var prompt = {
-    type: 'confirm',
-    name: 'confirm',
-    message: 'Will bump from ' + pkg.version + ' to ' + version + '. Continue?'
-  }
-
-  inquirer.prompt(prompt, function (answers) {
-    callback(answers.confirm)
-  })
 }
 
 function isGitRepo (callback) {
@@ -196,47 +196,44 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
   }
   log('Releasing a new version of `%s` (current version: %s)', pkg.name, pkg.version)
   log('')
-  gotVersion(function (version) {
-    confirm(version, function (yes) {
-      isGitRepo(function (isGitRepo) {
-        var commands = [
-          'npm version ' + version + (argv.message ? ' --message ' + argv.message : ''),
-          isGitRepo && 'git push origin',
-          isGitRepo && 'git push origin --tags',
-          'npm publish' + (argv.tag ? ' --tag ' + argv.tag : '')
-        ]
-          .filter(Boolean)
+  inquirer.prompt(prompts, function (answers) {
+    if (!answers.confirm) {
+      process.exit(0)
+    }
+    isGitRepo(function (isGitRepo) {
+      var commands = [
+        'npm version ' + answers.version + (argv.message ? ' --message ' + argv.message : ''),
+        isGitRepo && 'git push origin',
+        isGitRepo && 'git push origin --tags',
+        'npm publish' + (argv.tag ? ' --tag ' + argv.tag : '')
+      ]
+        .filter(Boolean)
 
-        if (!yes) {
-          return process.exit(0)
-        }
-
-        var remaining = commands.slice()
-        async.eachSeries(commands, function (command, callback) {
-            log('=> ' + command)
-            execCmd(command, function (err, result) {
-              callback(err, result)
-              remaining.shift()
-            })
-          },
-          function (err) {
-            if (err) {
-              return showError(err)
-            }
-            log(chalk.green('Done'))
+      var remaining = commands.slice()
+      async.eachSeries(commands, function (command, callback) {
+          log('=> ' + command)
+          execCmd(command, function (err, result) {
+            callback(err, result)
+            remaining.shift()
           })
+        },
+        function (err) {
+          if (err) {
+            return showError(err)
+          }
+          log(chalk.green('Done'))
+        })
 
-        function showError (error) {
-          log('')
-          log(chalk.red(error.stdout))
-          log('')
-          log(chalk.red(error.message))
-          log('')
-          log(chalk.yellow('You can try again by running these commands manually:'))
-          log(chalk.white(remaining.join('\n')))
-          process.exit(1)
-        }
-      })
+      function showError(error) {
+        log('')
+        log(chalk.red(error.stdout))
+        log('')
+        log(chalk.red(error.message))
+        log('')
+        log(chalk.yellow('You can try again by running these commands manually:'))
+        log(chalk.white(remaining.join('\n')))
+        process.exit(1)
+      }
     })
   })
 })
