@@ -23,6 +23,7 @@ var argv = parseArgs(process.argv.slice(2), {
   alias: {
     y: 'yes',
     t: 'tag',
+    d: 'dry-run',
     m: 'message',
     h: 'help'
   },
@@ -43,7 +44,9 @@ var argv = parseArgs(process.argv.slice(2), {
 })
 
 var version = argv._[0],
-    confirm = argv.yes
+    confirm = argv.yes,
+    tag = argv.tag,
+    dryRun = argv.d
 
 function log (args) {
   console.log.apply(console, arguments)
@@ -110,10 +113,56 @@ var prompts = [
     }
   },
   {
+    type: 'list',
+    name: 'tag',
+    message: 'How should this version be tagged in NPM?',
+    when: function (answers) {
+      if (tag == true) {
+        return true
+      }
+      answers.tag = tag || 'latest'
+      return false
+    },
+    choices: function () {
+      var done = this.async()
+      exec('npm dist-tag ls', function (err, stdout) {
+        if (err) {
+          throw err
+        }
+        var choices = stdout.split('\n').map(function (line) {
+          return line.split(':')[0].replace(/^\s|\s$/, '')
+        }).filter(function (line) {
+          return line
+        }).concat([
+          new inquirer.Separator(),
+          {
+            name: 'Other (specify)',
+            value: null
+          }
+        ])
+        done(choices)
+      })
+    }
+  },
+  {
+    type: 'input',
+    name: 'tag',
+    message: 'Tag',
+    when: function (answers) {
+      return !answers.tag
+    },
+    default: 'latest'
+  },
+  {
     type: 'confirm',
     name: 'confirm',
     message: function (answers) {
-      return 'Will bump from ' + pkg.version + ' to ' + answers.version + '. Continue?'
+      var msg = 'Will bump from ' + pkg.version + ' to ' + answers.version + ' and tag as ' + answers.tag + '. Continue'
+      if (dryRun) {
+        msg += ' with dry run'
+      }
+      msg += '?'
+      return msg
     },
     when: function (answers) {
       if (confirm) {
@@ -136,6 +185,9 @@ function isGitRepo (callback) {
 }
 
 function execCmd (cmd, callback) {
+  if (dryRun) {
+    return callback()
+  }
   exec(cmd, function (err, stdout, stderr) {
     if (err) {
       err = new Error('The command `' + cmd + '` failed:\n' + err.message)
@@ -194,7 +246,12 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
   if (shouldSelfUpdate) {
     return selfUpdate()
   }
-  log('Releasing a new version of `%s` (current version: %s)', pkg.name, pkg.version)
+  if (dryRun) {
+    log('Dry run release of new version of `%s` (current version: %s)', pkg.name, pkg.version)
+  } else {
+    log('Releasing a new version of `%s` (current version: %s)', pkg.name, pkg.version)
+  }
+
   log('')
   inquirer.prompt(prompts, function (answers) {
     if (!answers.confirm) {
@@ -205,7 +262,7 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
         'npm version ' + answers.version + (argv.message ? ' --message ' + argv.message : ''),
         isGitRepo && 'git push origin',
         isGitRepo && 'git push origin --tags',
-        'npm publish' + (argv.tag ? ' --tag ' + argv.tag : '')
+        'npm publish' + (answers.tag ? ' --tag ' + answers.tag : '')
       ]
         .filter(Boolean)
 

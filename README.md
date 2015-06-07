@@ -28,5 +28,8 @@ Usage: cut-release [<newversion> | patch | minor | major | prepatch | preminor |
                     creating a version commit. If the message contains %s then
                     that will be replaced with the resulting version number
 
-    --tag, -t       The NPM tag to use when publishing. Defaults to 'latest'.
+    --tag, -t       The NPM tag to use when publishing. Defaults to 'latest'. Use this option with
+                    no value to choose from a list of existing tags.
+
+    --dry-run, -d   Print the commands to be executed without actually running them.
 ```
