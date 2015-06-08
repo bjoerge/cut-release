@@ -12,4 +12,6 @@ Usage: cut-release [<newversion> | patch | minor | major | prepatch | preminor |
     --tag, -t       The NPM tag to use when publishing. Defaults to 'latest'. Use this option with
                     no value to choose from a list of existing tags.
 
+    --preid, -p     The NPM prerelease identifier to be used when a prerelease version is specified.
+
     --dry-run, -d   Print the commands to be executed without actually running them.
