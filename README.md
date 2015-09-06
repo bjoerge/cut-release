@@ -6,9 +6,16 @@ A command line tool that helps you make faster npm releases.
 
 # What it does:
 
-  * runs `npm version` with the version you specify. If run in a git repo, it will also create a version commit and tag, just like what [`npm version`](https://docs.npmjs.com/cli/version) does.
+  * runs [`npm version`][npm version] with the version you specify. If run in a git repo, it will also create a version commit and tag, just like what [`npm version`][npm version] does.
   * pushes commits and tags to origin
-  * runs `npm publish`
+  * runs `npm publish`, unless the [`private` flag][private flag] is set in [package.json][private flag].
+
+###### Note:
+
+The release of `npm` version `2.13.0`, introduced a few [enhancements][enhancements] to how the [`npm version`][npm version] command works.
+
+In combination with `preversion`, `version`, and `postversion` scripts, your release workflow can now be reduced
+to a single `cut-release` command. See the [npm documentation][npm version] and [this issue][enhancements] for more details.
 
 # Install
 
@@ -38,3 +45,7 @@ Usage: cut-release [<newversion> | patch | minor | major | prepatch | preminor |
 
 # Contributing
 This is an OPEN Open Source Project. See [contributing.md](https://github.com/bjoerge/cut-release/blob/master/contributing.md)
+
+[private flag]: https://docs.npmjs.com/files/package.json#private
+[npm version]: https://docs.npmjs.com/cli/version
+[enhancements]: https://github.com/npm/npm/issues/8620
