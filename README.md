@@ -35,3 +35,6 @@ Usage: cut-release [<newversion> | patch | minor | major | prepatch | preminor |
 
     --dry-run, -d   Print the commands to be executed without actually running them.
 ```
+
+# Contributing
+This is an OPEN Open Source Project. See [contributing.md](https://github.com/bjoerge/cut-release/blob/master/contributing.md)
