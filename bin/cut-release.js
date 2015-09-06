@@ -136,7 +136,7 @@ function isGitRepo (callback) {
 }
 
 function execCmd (cmd, callback) {
-  exec(cmd, function (err, stdout, stderr) {
+  exec(cmd, {maxBuffer: 1024 * 1024 * 5}, function (err, stdout, stderr) {
     if (err) {
       err = new Error('The command `' + cmd + '` failed:\n' + err.message)
       err.stderr = stderr
