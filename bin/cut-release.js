@@ -23,10 +23,13 @@ var argv = parseArgs(process.argv.slice(2), {
   alias: {
     y: 'yes',
     t: 'tag',
+    p: 'preid',
     d: 'dry-run',
     m: 'message',
     h: 'help'
   },
+  string: ['p'],
+  boolean: ['y', 'd'],
   unknown: function (opt) {
     if (semver.valid(opt) || SEMVER_INCREMENTS.indexOf(opt) > -1) {
       return
@@ -46,6 +49,7 @@ var argv = parseArgs(process.argv.slice(2), {
 var version = argv._[0],
     confirm = argv.yes,
     tag = argv.tag,
+    preid = argv.preid,
     dryRun = argv.d
 
 function log (args) {
@@ -77,7 +81,7 @@ var prompts = [
     message: 'Select semver increment or specify new version',
     when: function (answers) {
       if (version) {
-        answers.version = maybeInc(version)
+        answers.version = version
       }
       return !version
     },
@@ -87,13 +91,7 @@ var prompts = [
         name: 'Other (specify)',
         value: null
       }
-    ]),
-    filter: function (input) {
-      if (!input) {
-        return null
-      }
-      return maybeInc(input)
-    }
+    ])
   },
   {
     type: 'input',
@@ -102,12 +100,65 @@ var prompts = [
     when: function (answers) {
       return !answers.version
     },
-    filter: function (input) {
-      return maybeInc(input)
-    },
     validate: function (input) {
       if (!semver.valid(input)) {
         return 'Please specify a valid semver, e.g. 1.2.3. See http://semver.org/'
+      }
+      return true
+    }
+  },
+  {
+    type: 'list',
+    name: 'preid',
+    message: function (answers) {
+      return 'Select a ' + answers.version + ' identifier'
+    },
+    when: function (answers) {
+      if (preid) {
+        answers.preid = preid
+        return false
+      }
+      if (!answers.version.match(/^pre/) || semver.valid(answers.version)) {
+        return false
+      }
+      var done = this.async()
+      exec('npm show . versions', function (err, stdout) {
+        if (err) {
+          throw err
+        }
+        var semvers = JSON.parse(stdout.replace(/'/g, '"'))
+          .map(function (version) {
+            return semver.parse(version.replace(/[^0-9.a-z\-]/g, ''))
+          })
+          .filter(function (sver) {
+            return sver && sver.prerelease && sver.prerelease.length > 1
+          })
+        if (semvers.length >= 1) {
+          answers.preid = semvers[0].prerelease[0]
+          done(false)
+        } else {
+          done(true)
+        }
+      })
+    },
+    choices: ['rc', 'alpha', 'beta'].concat([
+      new inquirer.Separator(),
+      {
+        name: 'Other (specify)',
+        value: null
+      }
+    ])
+  },
+  {
+    type: 'input',
+    name: 'preid',
+    message: 'Identifier',
+    when: function (answers) {
+      return !answers.preid && answers.version.match(/^pre/)
+    },
+    validate: function (input) {
+      if (!input.match(/[a-z]+/)) {
+        return 'Please specify a valid identifier'
       }
       return true
     }
@@ -129,17 +180,20 @@ var prompts = [
         if (err) {
           throw err
         }
-        var choices = stdout.split('\n').map(function (line) {
-          return line.split(':')[0].replace(/^\s|\s$/, '')
-        }).filter(function (line) {
-          return line
-        }).concat([
-          new inquirer.Separator(),
-          {
-            name: 'Other (specify)',
-            value: null
-          }
-        ])
+        var choices = stdout.split('\n')
+          .map(function (line) {
+            return line.split(':')[0].replace(/^\s|\s$/, '')
+          })
+          .filter(function (line) {
+            return line
+          })
+          .concat([
+            new inquirer.Separator(),
+            {
+              name: 'Other (specify)',
+              value: null
+            }
+          ])
         done(choices)
       })
     }
@@ -157,7 +211,7 @@ var prompts = [
     type: 'confirm',
     name: 'confirm',
     message: function (answers) {
-      var msg = 'Will bump from ' + pkg.version + ' to ' + answers.version + ' and tag as ' + answers.tag + '. Continue'
+      var msg = 'Will bump from ' + pkg.version + ' to ' + maybeInc(answers.version, answers.preid) + ' and tag as ' + answers.tag + '. Continue'
       if (dryRun) {
         msg += ' with dry run'
       }
@@ -173,8 +227,8 @@ var prompts = [
   }
 ]
 
-function maybeInc (version) {
-  return SEMVER_INCREMENTS.indexOf(version) > -1 ? semver.inc(pkg.version, version) : version
+function maybeInc (version, preid) {
+  return SEMVER_INCREMENTS.indexOf(version) > -1 ? semver.inc(pkg.version, version, preid) : version
 }
 
 function isGitRepo (callback) {
@@ -258,7 +312,7 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
     }
     isGitRepo(function (isGitRepo) {
       var commands = [
-        'npm version ' + answers.version + (argv.message ? ' --message ' + argv.message : ''),
+        'npm version ' + maybeInc(answers.version, answers.preid) + (argv.message ? ' --message ' + argv.message : ''),
         isGitRepo && 'git push origin',
         isGitRepo && 'git push origin --tags',
         'npm publish' + (answers.tag ? ' --tag ' + answers.tag : '')
