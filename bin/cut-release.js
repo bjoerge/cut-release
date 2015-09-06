@@ -203,7 +203,7 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
           'npm version ' + version + (argv.message ? ' --message ' + argv.message : ''),
           isGitRepo && 'git push origin',
           isGitRepo && 'git push origin --tags',
-          'npm publish' + (argv.tag ? ' --tag ' + argv.tag : '')
+          !pkg.private && ('npm publish' + (argv.tag ? ' --tag ' + argv.tag : ''))
         ]
           .filter(Boolean)
 
