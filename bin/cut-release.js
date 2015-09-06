@@ -75,7 +75,7 @@ var prompts = [
     type: 'list',
     name: 'version',
     message: 'Select semver increment or specify new version',
-    when: function(answers) {
+    when: function (answers) {
       if (version) {
         answers.version = maybeInc(version)
       }
@@ -117,7 +117,7 @@ var prompts = [
     name: 'tag',
     message: 'How should this version be tagged in NPM?',
     when: function (answers) {
-      if (tag == true) {
+      if (tag === true) {
         return true
       }
       answers.tag = tag || 'latest'
@@ -172,7 +172,6 @@ var prompts = [
     }
   }
 ]
-
 
 function maybeInc (version) {
   return SEMVER_INCREMENTS.indexOf(version) > -1 ? semver.inc(pkg.version, version) : version
@@ -281,7 +280,7 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
           log(chalk.green('Done'))
         })
 
-      function showError(error) {
+      function showError (error) {
         log('')
         log(chalk.red(error.stdout))
         log('')
