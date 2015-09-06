@@ -315,7 +315,7 @@ maybeSelfUpdate(function (err, shouldSelfUpdate) {
         'npm version ' + maybeInc(answers.version, answers.preid) + (argv.message ? ' --message ' + argv.message : ''),
         isGitRepo && 'git push origin',
         isGitRepo && 'git push origin --tags',
-        'npm publish' + (answers.tag ? ' --tag ' + answers.tag : '')
+        !pkg.private && ('npm publish' + (answers.tag ? ' --tag ' + answers.tag : ''))
       ]
         .filter(Boolean)
 
